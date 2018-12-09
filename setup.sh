@@ -1,12 +1,16 @@
+sudo apt-get update
+sudo apt-get install python3-pip
 sudo pip3 install virtualenv
 virtualenv venv
 source venv/bin/activate
 os=$(uname)
 if [ $os = "Linux" ]; then
+	sudo apt install swig
+	sudo apt install libpulse-dev
     sudo apt install poppler-utils
-    sudo apt install libpulse-dev
-    sudo apt install swig
-    pip3 install -r requirements.txt
+	sudo apt-get install python-dev libxml2-dev libxslt1-dev antiword unrtf poppler-utils pstotext tesseract-ocr flac ffmpeg lame libmad0 libsox-fmt-mp3 sox libjpeg-dev swig libpulse-dev
+    sudo apt-get install python3-tk
+	pip3 install -r requirements.txt
 fi
 if [ $os = "Darwin" ]; then
     brew install poppler-utils
