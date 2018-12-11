@@ -1,6 +1,9 @@
-#!/usr/bin/env python
-import click
+#!/usr/bin/env python3 
 
+# diesen Command benutzen für richtige Umgebung: source venv/bin/activate
+
+import click
+import decimal
 import document_clf_train
 import plaintext_converter
 import run
@@ -12,6 +15,7 @@ import ntpath
 from utilities import remove_doc_arrows
 
 original_source_path = ''
+
 
 
 @click.group()
@@ -35,12 +39,28 @@ def ocr_impl(source, dest):
     global original_source_path
     original_source_path = source
     remove_doc_arrows.clean_arrows(dest)
-    failed_dir = 'FAILED_OCR_DIR'
-    ensure_directory(failed_dir)
+    #failed_dir = 'FAILED_OCR_DIR'
+    #ensure_directory(failed_dir)
+    global list_failed_filedir
+    list_failed_filedir = []
+	
+    global source_directory
+    source_directory = source
+	
     for f in failed_files:
         filename = ntpath.basename(f)
-        shutil.copyfile(f, failed_dir + '/' + filename)
+        #shutil.copyfile(f, failed_dir + '/' + filename)
+        print("failed file:")
+        print("##################################################################")
+        print("dest: "+ dest + "  ntpath: "+ ntpath.dirname(f)+ "  filename: " + filename + "  source: " + source)
+        print("##################################################################")
+		#save all failed files in list to use in classify_impl
+        filedir = ntpath.dirname(f)+'/'+filename
+        filedir = filedir.replace(source,"")
+        list_failed_filedir.append(filedir)
+        #print(list_failed_filedir)
 
+    
 
 @cli.command()
 @click.argument("source")
@@ -55,71 +75,127 @@ def classify_impl(source, dest):
         # TODO: put original files in new directory corresponding to class
     click.echo("Run Model")
     results = run.run_model(source)
+	
+	
+    #failed_source = 'FAILED_OCR_DIR'
+    #personal_dir = dest + '/PERSONAL'
+    #nonpersonal_dir = dest + '/NON_PERSONAL'
+    #sensitive_dir = dest + '/SENSITIVE_PERSONAL'
+    #ensure_directory(nonpersonal_dir)
+    #ensure_directory(personal_dir)
+    #ensure_directory(sensitive_dir)
 
-    failed_source = 'FAILED_OCR_DIR'
-    personal_dir = dest + '/PERSONAL'
-    nonpersonal_dir = dest + '/NON_PERSONAL'
-    sensitive_dir = dest + '/SENSITIVE_PERSONAL'
-    ensure_directory(nonpersonal_dir)
-    ensure_directory(personal_dir)
-    ensure_directory(sensitive_dir)
 
-    metadata_personal = open(personal_dir + '/metadata.json', 'a+')
-    metadata_sensitive = open(sensitive_dir + '/metadata.json', 'a+')
-    metadata_nonpersonal = open(nonpersonal_dir + '/metadata.json', 'a+')
-    lines_personal_file = open(personal_dir + '/lines_file.json', 'a+')
-    lines_sensitive_file = open(sensitive_dir + '/lines_file.json', 'a+')
-    lines_nonpersonal_file = open(nonpersonal_dir + '/lines_file.json', 'a+')
+    #metadata_personal = open(personal_dir + '/metadata.json', 'a+')
+    #metadata_sensitive = open(sensitive_dir + '/metadata.json', 'a+')
+    #metadata_nonpersonal = open(nonpersonal_dir + '/metadata.json', 'a+')
+    #lines_personal_file = open(personal_dir + '/lines_file.json', 'a+')
+    #lines_sensitive_file = open(sensitive_dir + '/lines_file.json', 'a+')
+    #lines_nonpersonal_file = open(nonpersonal_dir + '/lines_file.json', 'a+')
 
-    if os.path.isdir(failed_source):
-        if os.path.isdir(dest + '/' + failed_source):
-            shutil.rmtree(dest + '/' + failed_source)
-        shutil.move(failed_source, dest)
+    #if os.path.isdir(failed_source):
+    #    if os.path.isdir(dest + '/' + failed_source):
+    #        shutil.rmtree(dest + '/' + failed_source)
+    #    shutil.move(failed_source, dest)
+    
+    all_paths = []
+    path_nonpersonal = []
+    path_personal = []
+    path_sensitive = []
+    path_failed = []
+    path_confidence = []
+    path_amount_files = []
 
     nonpersonal_count = 0
     personal_count = 0
     sensitive_count = 0
     for path, category, individual_categories, predicted_lines, confidence in results:
+        resetting_nonpersonal_count = 0
+        resetting_personal_count = 0
+        resetting_sensitive_count = 0
+    
         filename = path.replace(f"{source}/", "")
-        print(f"File: {filename} is {category}")
+        filename_info = path.replace(f"{source}/", "")
+        #print(f"File: {filename} is {category}")
         original_filename = f"{original_source_path}/{filename}"
 
         predicted_lines = remove_duplicates(predicted_lines)
 
         output_file = ''
         base_file_name = os.path.basename(filename)
-        filename = filename.replace(base_file_name, f"{confidence:.3f}-{base_file_name}")
+
+        info_file = open(dest + '/'+base_file_name+'_info.json', 'a+')
+        info_file_csv = open(dest + '/'+base_file_name+'_info.csv', 'a+')
+        info_file_cat_csv = open(dest + '/'+base_file_name+'_cat_info.csv', 'a+')
+        info_file_cat_csv.write("Categorys;\n")
+        if len(individual_categories) == 0:
+            info_file_cat_csv.write("-;")
+        else:
+            for f in individual_categories:
+                info_file_cat_csv.write(f+";\n")
+            
+            
+        info_file_csv.write("Category;certainty;\n")
+        
+        certainty = float(round(confidence,3))*100
+        certainty = "%.2f" % certainty
+        
+        #info_file.write("certainty: "+ certainty+"%" +"\n")
+		
+        #path to directory
+        directoy_path = dest+"/"+filename.replace(base_file_name,"")
+        
         #  import ipdb
         #  ipdb.set_trace()
         if category[0] == 0:
-            output_file = os.path.join(nonpersonal_dir, filename)
+            #info_file.write("Category: non_personal \n")
+            info_file_csv.write("non_personal;"+certainty+"%"+";\n")
+            output_file = os.path.join(dest, filename)
             nonpersonal_count += 1
+            resetting_nonpersonal_count += 1
         if category[0] == 1:
-            output_file = os.path.join(personal_dir, filename)
+            #info_file.write("Category: personal \n")
+            info_file_csv.write("personal;"+certainty+"%"+";\n")
+            output_file = os.path.join(dest, filename)
             append_to_metadata_file(
-                metadata_personal,
-                filename,
-                individual_categories
-            )
-            append_to_metadata_file(
-                lines_personal_file,
-                filename,
+                info_file,
+                individual_categories,
                 predicted_lines
             )
             personal_count += 1
+            resetting_personal_count += 1
         if category[0] == 2:
-            output_file = os.path.join(sensitive_dir, filename)
+            #info_file.write("Category: sensitive \n")
+            info_file_csv.write("sensitive;"+certainty+"%"+";\n")
+            output_file = os.path.join(dest, filename)
             append_to_metadata_file(
-                metadata_sensitive,
-                filename,
-                individual_categories
-            )
-            append_to_metadata_file(
-                lines_sensitive_file,
-                filename,
+                info_file,
+                individual_categories,
                 predicted_lines
             )
             sensitive_count += 1
+            resetting_sensitive_count += 1
+           
+            
+        
+        
+        #save all directorys in list with values(which categorys)
+        if directoy_path in all_paths:
+            path_nonpersonal[all_paths.index(directoy_path)] = path_nonpersonal[all_paths.index(directoy_path)] + resetting_nonpersonal_count
+            path_personal[all_paths.index(directoy_path)] = path_personal[all_paths.index(directoy_path)] + resetting_personal_count
+            path_sensitive[all_paths.index(directoy_path)] = path_sensitive[all_paths.index(directoy_path)] + resetting_sensitive_count
+            path_confidence[all_paths.index(directoy_path)] = (path_confidence[all_paths.index(directoy_path)] + confidence)/2
+            path_amount_files[all_paths.index(directoy_path)] = path_amount_files[all_paths.index(directoy_path)] + 1
+            #print("known path: " +str(directoy_path)+"   path_nonpersonal: "+str(path_nonpersonal[all_paths.index(directoy_path)])+"   path_personal"+str(path_personal[all_paths.index(directoy_path)])+"   path_sensitive"+str(path_sensitive[all_paths.index(directoy_path)])+"   path_failed"+str(path_failed[all_paths.index(directoy_path)])+"   path_confidence"+str(path_confidence[all_paths.index(directoy_path)]))
+        else:
+            all_paths.append(directoy_path)
+            path_nonpersonal.append(resetting_nonpersonal_count)
+            path_personal.append(resetting_personal_count)
+            path_sensitive.append(resetting_sensitive_count)
+            path_failed.append(0)
+            path_confidence.append(confidence)
+            path_amount_files.append(1)
+            #print("new path: " +str(directoy_path)+"   path_nonpersonal: "+str(path_nonpersonal[all_paths.index(directoy_path)])+"   path_personal"+str(path_personal[all_paths.index(directoy_path)])+"   path_sensitive"+str(path_sensitive[all_paths.index(directoy_path)])+"   path_failed"+str(path_failed[all_paths.index(directoy_path)])+"   path_confidence"+str(path_confidence[all_paths.index(directoy_path)]))
 
         #  import ipdb; ipdb.set_trace()
         #  print("Output File", output_file)
@@ -127,23 +203,233 @@ def classify_impl(source, dest):
         if not os.path.exists(os.path.dirname(output_file)):
             os.makedirs(os.path.dirname(output_file))
         shutil.copyfile(original_filename, output_file)
+        info_file.close()
+        info_file_csv.close()
+        info_file_cat_csv.close()
+        output_file_info = os.path.join(dest, filename_info+'_info.json')
+        shutil.move(dest + '/'+base_file_name+'_info.json', output_file_info)
+        output_file_info_csv = os.path.join(dest, filename_info+'_info.csv')
+        shutil.move(dest + '/'+base_file_name+'_info.csv', output_file_info_csv)
+        output_file_cat_info_csv = os.path.join(dest, filename_info+'_cat_info.csv')
+        shutil.move(dest + '/'+base_file_name+'_cat_info.csv', output_file_cat_info_csv)
     total_count = nonpersonal_count + personal_count + sensitive_count
     if total_count == 0:
         total_count = 1
+    
+    
+    #metadata_personal.close()
+    #metadata_sensitive.close()
+    #metadata_nonpersonal.close()
+    #lines_personal_file.close()
+    #lines_sensitive_file.close()
+    #lines_nonpersonal_file.close()
+    #print("failed files list: "+str(list_failed_filedir))
+	
+    #handeling failed files
+    for f in list_failed_filedir:
+        filename = ntpath.basename(f)
+        output_file = dest + f
+        if not os.path.exists(os.path.dirname(output_file)):
+            os.makedirs(os.path.dirname(output_file))
+        shutil.copyfile(source_directory+ f, output_file)
+        info_file = open(output_file+'_info.json', 'a+')
+        info_file.write("Category: Failed\n")
+        info_file.close()
+        info_file_csv = open(output_file+'_info.csv', 'a+')
+        info_file_csv.write("Category;certainty;\n")
+        info_file_csv.write("Failed; -;\n")
+        info_file_csv.close()
+        info_file_cat_csv = open(output_file+'_cat_info.csv', 'a+')
+        info_file_cat_csv.write("Category;\n")
+        info_file_cat_csv.write("-;\n")
+        info_file_cat_csv.close()
+        
+        directoy_path = output_file.replace(filename,"")
+        #print("directoy_path"+directoy_path)
+        if directoy_path in all_paths:
+            path_failed[all_paths.index(directoy_path)] = path_failed[all_paths.index(directoy_path)] + 1
+            path_amount_files[all_paths.index(directoy_path)] = path_amount_files[all_paths.index(directoy_path)] + 1
+            #print("known path: " +str(directoy_path)+"   path_nonpersonal: "+str(path_nonpersonal[all_paths.index(directoy_path)])+"   path_personal"+str(path_personal[all_paths.index(directoy_path)])+"   path_sensitive"+str(path_sensitive[all_paths.index(directoy_path)])+"   path_failed"+str(path_failed[all_paths.index(directoy_path)]))
+        else:
+            all_paths.append(directoy_path)
+            path_nonpersonal.append(0)
+            path_personal.append(0)
+            path_sensitive.append(0)
+            path_failed.append(1)
+            path_confidence.append(0)
+            path_amount_files.append(1)
+            #print("new path: " +str(directoy_path)+"   path_nonpersonal: "+str(path_nonpersonal[all_paths.index(directoy_path)])+"   path_personal"+str(path_personal[all_paths.index(directoy_path)])+"   path_sensitive"+str(path_sensitive[all_paths.index(directoy_path)])+"   path_failed"+str(path_failed[all_paths.index(directoy_path)]))
+    
+    
+    #find all folders with only folders in order to add folder overview
+    all_directories = [x[0] for x in os.walk(dest)]
+    #print(all_directories)
+    for f in all_directories:
+        f = f+"/"
+        if f in all_paths:
+            pass
+        else:
+            #print("folder with only folders: "+str(f))
+            all_paths.append(f)
+            path_nonpersonal.append(0)
+            path_personal.append(0)
+            path_sensitive.append(0)
+            path_failed.append(0)
+            path_confidence.append(0)
+            path_amount_files.append(0)
+    
+   
+    
+    #sorting lists
+    all_paths_copy = all_paths.copy()
+    path_confidence_temp = []
+    path_nonpersonal_temp = []
+    path_personal_temp = []
+    path_sensitive_temp = []
+    path_failed_temp = []
+    path_amount_files_temp = []
+    
+    i = 0
+    while i < len(all_paths):
+        path_confidence_temp.append(0)
+        path_nonpersonal_temp.append(0)
+        path_personal_temp.append(0)
+        path_sensitive_temp.append(0)
+        path_failed_temp.append(0)
+        path_amount_files_temp.append(0)
+        i += 1
+    
+    all_paths.sort(key=lambda x: x.count('/'))
+    #print(str(all_paths))
+    for f in all_paths:
+        index_in_new = all_paths.index(f)
+        index_in_old = all_paths_copy.index(f)
+        if index_in_new == index_in_old:
+            #print("nichts: "+ f+"  index old:"+str(index_in_old)+"  index new:"+str(index_in_new))
+            path_confidence_temp[index_in_new] = path_confidence[index_in_old]
+            path_nonpersonal_temp[index_in_new] = path_nonpersonal[index_in_old]
+            path_personal_temp[index_in_new] = path_personal[index_in_old]
+            path_sensitive_temp[index_in_new] = path_sensitive[index_in_old]
+            path_failed_temp[index_in_new] = path_failed[index_in_old]
+            path_amount_files_temp[index_in_new] = path_amount_files[index_in_old]
+        else:
+            #print("veränderung: "+ f+"  index old:"+str(index_in_old)+"  index new:"+str(index_in_new))
+            path_confidence_temp[index_in_new] = path_confidence[index_in_old]
+            path_nonpersonal_temp[index_in_new] = path_nonpersonal[index_in_old]
+            path_personal_temp[index_in_new] = path_personal[index_in_old]
+            path_sensitive_temp[index_in_new] = path_sensitive[index_in_old]
+            path_failed_temp[index_in_new] = path_failed[index_in_old]
+            path_amount_files_temp[index_in_new] = path_amount_files[index_in_old]
+            
+    path_confidence = path_confidence_temp
+    path_nonpersonal = path_nonpersonal_temp
+    path_personal = path_personal_temp
+    path_sensitive = path_sensitive_temp
+    path_failed = path_failed_temp
+    path_amount_files = path_amount_files_temp
+            
+    #figuring out directory structure and adding values from subfolders
+    i = 0
+    while i < len(all_paths):
+        string = all_paths[i]
+        string = string.replace(dest,"")
+        for f in all_paths:
+            string2 = f.replace(dest,"")
+            if string in f:
+                #print("string in f:"+ string)
+                if string.replace(string2,"") == "":
+                    pass
+                else:
+                    #print("nicht der selbe:"+ string)
+                    if (string2.find(string) == 0):
+                        #print(dest+string +"ist überordner von"+string2)
+                        #print("\n   "+dest+string+"     "+str(path_amount_files[all_paths.index(dest+string)]))
+                        
+                        #try:
+                            #path_confidence[all_paths.index(dest+string)] = (path_confidence[all_paths.index(dest+string)]*(path_amount_files[all_paths.index(dest+string)]-path_failed[all_paths.index(dest+string)]) + path_confidence[all_paths.index(f)]*(path_amount_files[all_paths.index(f)]-path_failed[all_paths.index(f)])) / (path_amount_files[all_paths.index(dest+string)] - path_failed[all_paths.index(dest+string)] + path_amount_files[all_paths.index(f)] -path_failed[all_paths.index(f)])
+                        #except IndexError:
+                            #path_confidence.append(0)
+                        
+                        here_confidence = path_confidence[all_paths.index(dest+string)]*(path_amount_files[all_paths.index(dest+string)]-path_failed[all_paths.index(dest+string)])
+                        there_confidence = path_confidence[all_paths.index(f)]*(path_amount_files[all_paths.index(f)]-path_failed[all_paths.index(f)])
+                        here_there_confidence = here_confidence + there_confidence
+                        amount_of_files_total = (path_amount_files[all_paths.index(f)]-path_failed[all_paths.index(f)]) + (path_amount_files[all_paths.index(dest+string)]-path_failed[all_paths.index(dest+string)])
+                        try:
+                            new_confidence = here_there_confidence/ amount_of_files_total
+                        except ZeroDivisionError:
+                            #print("")
+                            new_confidence = 0
 
+                        path_confidence[all_paths.index(dest+string)] = new_confidence
+                        
+                        path_nonpersonal[all_paths.index(dest+string)] = path_nonpersonal[all_paths.index(dest+string)] + path_nonpersonal[all_paths.index(f)]
+                        path_personal[all_paths.index(dest+string)] = path_personal[all_paths.index(dest+string)] + path_personal[all_paths.index(f)]
+                        path_sensitive[all_paths.index(dest+string)] = path_sensitive[all_paths.index(dest+string)] + path_sensitive[all_paths.index(f)]
+                        path_failed[all_paths.index(dest+string)] = path_failed[all_paths.index(dest+string)] + path_failed[all_paths.index(f)]
+                        path_amount_files[all_paths.index(dest+string)] = path_amount_files[all_paths.index(dest+string)] + path_amount_files[all_paths.index(f)]
+                        #print("   "+dest+string+"     "+str(path_amount_files[all_paths.index(dest+string)]))
+
+        i += 1
+    
+    #writing directory overview
+    i = 0
+    while i < len(all_paths):
+        try:
+            amount = float(round(((path_amount_files[i])/(path_amount_files[0])),3))*100
+            amount = "%.2f" % amount
+
+            nonpersonal = float(round(((path_nonpersonal[i])/(path_amount_files[i])),3))*100
+            nonpersonal = "%.2f" % nonpersonal
+            
+            personal = float(round(((path_personal[i])/(path_amount_files[i])),3))*100
+            personal = "%.2f" % personal
+
+            sensitive = float(round(((path_sensitive[i])/(path_amount_files[i])),3))*100
+            sensitive = "%.2f" % sensitive
+
+            failed = float(round(path_failed[i]/path_amount_files[i],3))*100
+            failed = "%.2f" % failed
+
+            certainty = float(round(path_confidence[i],3))*100
+            certainty = "%.2f" % certainty
+        except ZeroDivisionError:
+            print("ZeroDivisionError")
+            amount = 0
+            nonpersonal = 0
+            personal = 0
+            sensitive = 0
+            failed = 0
+            certainty = 0
+        
+        info_file_cat_csv = open(all_paths[i]+"Ordner_info.csv", 'a+')
+        info_file_cat_csv.write("amount_of_files;nonpersonal;personal;sensitive;failed;certainty\n")
+        info_file_cat_csv.write(str(path_amount_files[i])+";"+str(path_nonpersonal[i])+";"+str(path_personal[i])+";"+str(path_sensitive[i])+";"+str(path_failed[i])+";"+str(certainty)+"%"+"\n")
+        info_file_cat_csv.write(str(amount)+"%"+";"+str(nonpersonal)+"%"+";"+str(personal)+"%"+";"+str(sensitive)+"%"+";"+str(failed)+"%"+"\n")
+        info_file_cat_csv.close()
+        i += 1
+    
+    
+    try:
+        nonpersonal = float(path_nonpersonal[0]/path_amount_files[0])*100
+        nonpersonal = "%.2f" % nonpersonal
+        personal = float(path_personal[0]/path_amount_files[0])*100
+        personal = "%.2f" % personal
+        sensitive = float(path_sensitive[0]/path_amount_files[0])*100
+        sensitive = "%.2f" % sensitive
+        failed = float(path_failed[0]/path_amount_files[0])*100
+        failed = "%.2f" % failed
+    except ZeroDivisionError:
+        nonpersonal = "-"
+        personal = "-"
+        sensitive = "-"
+        failed = "-"
     print("---------------------------------------------")
     print("Document Ratios: ")
-    print(f"Total Count: {total_count}")
-    print(f"Non Personal: {nonpersonal_count/total_count}")
-    print(f"Personal: {personal_count/total_count}")
-    print(f"Sensitive: {sensitive_count/total_count}")
-    metadata_personal.close()
-    metadata_sensitive.close()
-    metadata_nonpersonal.close()
-    lines_personal_file.close()
-    lines_sensitive_file.close()
-    lines_nonpersonal_file.close()
-
+    print(f"Total Count:    "+ str(path_amount_files[0]) +"  "+"100%")
+    print(f"Non Personal:   "+ str(path_nonpersonal[0]) +"  "+nonpersonal+"%")
+    print(f"Personal:       "+ str(path_personal[0]) +"  "+personal+"%")
+    print(f"Sensitive:      "+ str(path_sensitive[0]) +"  "+sensitive+"%")
+    print("Failed:         "+ str(path_failed[0]) +"  "+failed+"%")
 
 @cli.command()
 @click.argument("source")
@@ -177,10 +463,27 @@ def ensure_directory(directory):
         os.makedirs(directory)
 
 
-def append_to_metadata_file(metadata_file, classified_file, categories):
-    data = {classified_file: {'high_probability_categories': categories}}
-    json.dump(data, metadata_file, sort_keys=True, indent=4)
-    metadata_file.write('\n')
+def append_to_metadata_file(metadata_file, individual_categories, predicted_lines):
+    #data = {'high_probability_categories': categories}
+    #json.dump(data, metadata_file, sort_keys=True, indent=2)
+    #metadata_file.write('\n')
+    
+    metadata_file.write("Category:\n")
+    if len(individual_categories) == 0:
+        metadata_file.write('-')
+    else:
+        for f in individual_categories:
+            metadata_file.write('   "'+f+'"\n')
+    metadata_file.write("\nCategory (text found):\n")
+    if len(individual_categories) == 0:
+        metadata_file.write('-')
+    else:
+        for f in predicted_lines:
+            metadata_file.write('   "'+f+'"\n')
+    
+    
+
+    
 
 
 def remove_duplicates(n_gram_lines):
