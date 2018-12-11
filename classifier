@@ -151,6 +151,11 @@ def classify_impl(source, dest):
             #info_file.write("Category: non_personal \n")
             info_file_csv.write("non_personal;"+certainty+"%"+";\n")
             output_file = os.path.join(dest, filename)
+            append_to_metadata_file(
+                info_file,
+                individual_categories,
+                predicted_lines
+            )
             nonpersonal_count += 1
             resetting_nonpersonal_count += 1
         if category[0] == 1:
