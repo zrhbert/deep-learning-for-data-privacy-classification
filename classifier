@@ -189,7 +189,7 @@ def classify_impl(source, dest):
             path_nonpersonal[all_paths.index(directoy_path)] = path_nonpersonal[all_paths.index(directoy_path)] + resetting_nonpersonal_count
             path_personal[all_paths.index(directoy_path)] = path_personal[all_paths.index(directoy_path)] + resetting_personal_count
             path_sensitive[all_paths.index(directoy_path)] = path_sensitive[all_paths.index(directoy_path)] + resetting_sensitive_count
-            path_confidence[all_paths.index(directoy_path)] = (path_confidence[all_paths.index(directoy_path)] + confidence)/2
+            path_confidence[all_paths.index(directoy_path)] = (path_confidence[all_paths.index(directoy_path)]*path_amount_files[all_paths.index(directoy_path)] + confidence)/(path_amount_files[all_paths.index(directoy_path)] + 1)
             path_amount_files[all_paths.index(directoy_path)] = path_amount_files[all_paths.index(directoy_path)] + 1
             #print("known path: " +str(directoy_path)+"   path_nonpersonal: "+str(path_nonpersonal[all_paths.index(directoy_path)])+"   path_personal"+str(path_personal[all_paths.index(directoy_path)])+"   path_sensitive"+str(path_sensitive[all_paths.index(directoy_path)])+"   path_failed"+str(path_failed[all_paths.index(directoy_path)])+"   path_confidence"+str(path_confidence[all_paths.index(directoy_path)]))
         else:
@@ -350,10 +350,7 @@ def classify_impl(source, dest):
                         #print(dest+string +"ist überordner von"+string2)
                         #print("\n   "+dest+string+"     "+str(path_amount_files[all_paths.index(dest+string)]))
                         
-                        #try:
-                            #path_confidence[all_paths.index(dest+string)] = (path_confidence[all_paths.index(dest+string)]*(path_amount_files[all_paths.index(dest+string)]-path_failed[all_paths.index(dest+string)]) + path_confidence[all_paths.index(f)]*(path_amount_files[all_paths.index(f)]-path_failed[all_paths.index(f)])) / (path_amount_files[all_paths.index(dest+string)] - path_failed[all_paths.index(dest+string)] + path_amount_files[all_paths.index(f)] -path_failed[all_paths.index(f)])
-                        #except IndexError:
-                            #path_confidence.append(0)
+                        
                         
                         here_confidence = path_confidence[all_paths.index(dest+string)]*(path_amount_files[all_paths.index(dest+string)]-path_failed[all_paths.index(dest+string)])
                         there_confidence = path_confidence[all_paths.index(f)]*(path_amount_files[all_paths.index(f)]-path_failed[all_paths.index(f)])
@@ -406,11 +403,11 @@ def classify_impl(source, dest):
             failed = 0
             certainty = 0
         
-        info_file_cat_csv = open(all_paths[i]+"Ordner_info.csv", 'a+')
-        info_file_cat_csv.write("amount_of_files;nonpersonal;personal;sensitive;failed;certainty\n")
-        info_file_cat_csv.write(str(path_amount_files[i])+";"+str(path_nonpersonal[i])+";"+str(path_personal[i])+";"+str(path_sensitive[i])+";"+str(path_failed[i])+";"+str(certainty)+"%"+"\n")
-        info_file_cat_csv.write(str(amount)+"%"+";"+str(nonpersonal)+"%"+";"+str(personal)+"%"+";"+str(sensitive)+"%"+";"+str(failed)+"%"+"\n")
-        info_file_cat_csv.close()
+        info_file_ov_csv = open(all_paths[i]+"Ordner_info.csv", 'a+')
+        info_file_ov_csv.write("amount_of_files;nonpersonal;personal;sensitive;failed;certainty\n")
+        info_file_ov_csv.write(str(path_amount_files[i])+";"+str(path_nonpersonal[i])+";"+str(path_personal[i])+";"+str(path_sensitive[i])+";"+str(path_failed[i])+";"+str(certainty)+"%"+"\n")
+        info_file_ov_csv.write(str(amount)+"%"+";"+str(nonpersonal)+"%"+";"+str(personal)+"%"+";"+str(sensitive)+"%"+";"+str(failed)+"%"+"\n")
+        info_file_ov_csv.close()
         i += 1
     
     
