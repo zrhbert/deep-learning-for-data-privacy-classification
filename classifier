@@ -109,10 +109,14 @@ def classify_impl(source, dest):
     nonpersonal_count = 0
     personal_count = 0
     sensitive_count = 0
+    if not os.path.exists(dest+"/cach"):
+        os.makedirs(dest+"/cache")
+    
     for path, category, individual_categories, predicted_lines, confidence in results:
         resetting_nonpersonal_count = 0
         resetting_personal_count = 0
         resetting_sensitive_count = 0
+        
     
         filename = path.replace(f"{source}/", "")
         filename_info = path.replace(f"{source}/", "")
@@ -124,9 +128,9 @@ def classify_impl(source, dest):
         output_file = ''
         base_file_name = os.path.basename(filename)
 
-        info_file = open(dest + '/'+base_file_name+'_info.json', 'a+')
-        info_file_csv = open(dest + '/'+base_file_name+'_info.csv', 'a+')
-        info_file_cat_csv = open(dest + '/'+base_file_name+'_cat_info.csv', 'a+')
+        info_file = open(dest + '/cache/'+base_file_name+'_info.json', 'a+')
+        info_file_csv = open(dest + '/cache/'+base_file_name+'_info.csv', 'a+')
+        info_file_cat_csv = open(dest + '/cache/'+base_file_name+'_cat_info.csv', 'a+')
         info_file_cat_csv.write("Categorys;\n")
         if len(individual_categories) == 0:
             info_file_cat_csv.write("-;")
@@ -212,11 +216,11 @@ def classify_impl(source, dest):
         info_file_csv.close()
         info_file_cat_csv.close()
         output_file_info = os.path.join(dest, filename_info+'_info.json')
-        shutil.move(dest + '/'+base_file_name+'_info.json', output_file_info)
+        shutil.move(dest + '/cache/'+base_file_name+'_info.json', output_file_info)
         output_file_info_csv = os.path.join(dest, filename_info+'_info.csv')
-        shutil.move(dest + '/'+base_file_name+'_info.csv', output_file_info_csv)
+        shutil.move(dest + '/cache/'+base_file_name+'_info.csv', output_file_info_csv)
         output_file_cat_info_csv = os.path.join(dest, filename_info+'_cat_info.csv')
-        shutil.move(dest + '/'+base_file_name+'_cat_info.csv', output_file_cat_info_csv)
+        shutil.move(dest + '/cache/'+base_file_name+'_cat_info.csv', output_file_cat_info_csv)
     total_count = nonpersonal_count + personal_count + sensitive_count
     if total_count == 0:
         total_count = 1
@@ -265,7 +269,7 @@ def classify_impl(source, dest):
             path_amount_files.append(1)
             #print("new path: " +str(directoy_path)+"   path_nonpersonal: "+str(path_nonpersonal[all_paths.index(directoy_path)])+"   path_personal"+str(path_personal[all_paths.index(directoy_path)])+"   path_sensitive"+str(path_sensitive[all_paths.index(directoy_path)])+"   path_failed"+str(path_failed[all_paths.index(directoy_path)]))
     
-    
+    shutil.rmtree(dest+"/cache")
     #find all folders with only folders in order to add folder overview
     all_directories = [x[0] for x in os.walk(dest)]
     #print(all_directories)
