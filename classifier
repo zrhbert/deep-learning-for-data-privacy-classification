@@ -481,7 +481,7 @@ def append_to_metadata_file(metadata_file, individual_categories, predicted_line
         for f in individual_categories:
             metadata_file.write('   "'+f+'"\n')
     metadata_file.write("\nCategory (text found):\n")
-    if len(individual_categories) == 0:
+    if len(predicted_lines) == 0:
         metadata_file.write('-')
     else:
         for f in predicted_lines:
