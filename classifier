@@ -1,6 +1,5 @@
 #!/usr/bin/env python3 
 
-# diesen Command benutzen für richtige Umgebung: source venv/bin/activate
 
 import click
 import decimal
@@ -97,6 +96,9 @@ def classify_impl(source, dest):
     #    if os.path.isdir(dest + '/' + failed_source):
     #        shutil.rmtree(dest + '/' + failed_source)
     #    shutil.move(failed_source, dest)
+	
+	
+	
     
     all_paths = []
     path_nonpersonal = []
@@ -109,8 +111,11 @@ def classify_impl(source, dest):
     nonpersonal_count = 0
     personal_count = 0
     sensitive_count = 0
-    if not os.path.exists(dest+"/cach"):
-        os.makedirs(dest+"/cache")
+    if not os.path.exists("cache"):
+        os.makedirs("cache")
+    else:
+        shutil.rmtree("cache")
+        os.makedirs("cache")
     
     for path, category, individual_categories, predicted_lines, confidence in results:
         resetting_nonpersonal_count = 0
@@ -128,9 +133,9 @@ def classify_impl(source, dest):
         output_file = ''
         base_file_name = os.path.basename(filename)
 
-        info_file = open(dest + '/cache/'+base_file_name+'_info.json', 'a+')
-        info_file_csv = open(dest + '/cache/'+base_file_name+'_info.csv', 'a+')
-        info_file_cat_csv = open(dest + '/cache/'+base_file_name+'_cat_info.csv', 'a+')
+        info_file = open('cache/'+base_file_name+'_info.json', 'a+')
+        info_file_csv = open('cache/'+base_file_name+'_info.csv', 'a+')
+        info_file_cat_csv = open('cache/'+base_file_name+'_cat_info.csv', 'a+')
         info_file_cat_csv.write("Categorys;\n")
         if len(individual_categories) == 0:
             info_file_cat_csv.write("-;")
@@ -146,8 +151,17 @@ def classify_impl(source, dest):
         
         #info_file.write("certainty: "+ certainty+"%" +"\n")
 		
-        #path to directory
-        directoy_path = dest+"/"+filename.replace(base_file_name,"")
+        #path to directory / if for making sure it doesn't replace something with the same name
+        where_slash = filename.rfind("/")
+        if (where_slash == -1):
+            directoy_path = dest+"/"+filename.replace(base_file_name,"")
+        else:
+            directoy_path = dest+"/"+filename[:where_slash+1]
+            
+        
+        #print("filename: "+ filename)
+        #print("rfind /: "+ str(filename.rfind("/")))
+        #print(directoy_path)
         
         #  import ipdb
         #  ipdb.set_trace()
@@ -208,6 +222,11 @@ def classify_impl(source, dest):
 
         #  import ipdb; ipdb.set_trace()
         #  print("Output File", output_file)
+        
+        #print("base_file_name: "+ base_file_name)
+        #print("dest: "+ dest)
+        #print("directoy_path: "+ directoy_path)
+        #print("output_file: "+ output_file)
 
         if not os.path.exists(os.path.dirname(output_file)):
             os.makedirs(os.path.dirname(output_file))
@@ -216,11 +235,11 @@ def classify_impl(source, dest):
         info_file_csv.close()
         info_file_cat_csv.close()
         output_file_info = os.path.join(dest, filename_info+'_info.json')
-        shutil.move(dest + '/cache/'+base_file_name+'_info.json', output_file_info)
+        shutil.move('cache/'+base_file_name+'_info.json', output_file_info)
         output_file_info_csv = os.path.join(dest, filename_info+'_info.csv')
-        shutil.move(dest + '/cache/'+base_file_name+'_info.csv', output_file_info_csv)
+        shutil.move('cache/'+base_file_name+'_info.csv', output_file_info_csv)
         output_file_cat_info_csv = os.path.join(dest, filename_info+'_cat_info.csv')
-        shutil.move(dest + '/cache/'+base_file_name+'_cat_info.csv', output_file_cat_info_csv)
+        shutil.move('cache/'+base_file_name+'_cat_info.csv', output_file_cat_info_csv)
     total_count = nonpersonal_count + personal_count + sensitive_count
     if total_count == 0:
         total_count = 1
@@ -255,6 +274,11 @@ def classify_impl(source, dest):
         
         directoy_path = output_file.replace(filename,"")
         #print("directoy_path"+directoy_path)
+        #print("-----------------------------------------------------------------------------------------------------------")
+        #print("directoy_path"+directoy_path)
+        #print("-----------------------------------------------------------------------------------------------------------")
+    
+		
         if directoy_path in all_paths:
             path_failed[all_paths.index(directoy_path)] = path_failed[all_paths.index(directoy_path)] + 1
             path_amount_files[all_paths.index(directoy_path)] = path_amount_files[all_paths.index(directoy_path)] + 1
@@ -269,10 +293,12 @@ def classify_impl(source, dest):
             path_amount_files.append(1)
             #print("new path: " +str(directoy_path)+"   path_nonpersonal: "+str(path_nonpersonal[all_paths.index(directoy_path)])+"   path_personal"+str(path_personal[all_paths.index(directoy_path)])+"   path_sensitive"+str(path_sensitive[all_paths.index(directoy_path)])+"   path_failed"+str(path_failed[all_paths.index(directoy_path)]))
     
-    shutil.rmtree(dest+"/cache")
+    shutil.rmtree("cache")
     #find all folders with only folders in order to add folder overview
     all_directories = [x[0] for x in os.walk(dest)]
-    #print(all_directories)
+    #print("-----------------------------------------------------------------------------------------------------------")
+    #print("all_directories"+str(all_directories))
+    #print("-----------------------------------------------------------------------------------------------------------")
     for f in all_directories:
         f = f+"/"
         if f in all_paths:
@@ -286,7 +312,6 @@ def classify_impl(source, dest):
             path_failed.append(0)
             path_confidence.append(0)
             path_amount_files.append(0)
-    
    
     
     #sorting lists
@@ -309,7 +334,7 @@ def classify_impl(source, dest):
         i += 1
     
     all_paths.sort(key=lambda x: x.count('/'))
-    #print(str(all_paths))
+    #print("all_paths"+str(all_paths))
     for f in all_paths:
         index_in_new = all_paths.index(f)
         index_in_old = all_paths_copy.index(f)
@@ -377,6 +402,7 @@ def classify_impl(source, dest):
 
         i += 1
     
+    
     #writing directory overview
     i = 0
     while i < len(all_paths):
@@ -398,8 +424,10 @@ def classify_impl(source, dest):
 
             certainty = float(round(path_confidence[i],3))*100
             certainty = "%.2f" % certainty
+            
+            #print("amount "+amount+" nonpersonal "+nonpersonal+" personal "+personal+" sensitive "+sensitive+" failed "+failed+" certainty "+certainty)
         except ZeroDivisionError:
-            print("ZeroDivisionError")
+            #print("ZeroDivisionError")
             amount = 0
             nonpersonal = 0
             personal = 0
