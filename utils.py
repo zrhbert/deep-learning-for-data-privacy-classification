@@ -82,7 +82,7 @@ def fill_docs(documents, individual=False):
         full_text = ''
         for line in doc.lines:
             data = np.append(data, [line.text])
-            full_text += line.text
+            full_text += line.text + "\n"
             targets = np.append(
                 targets,
                 [convert_categories(line.categories, individual)]

@@ -74,31 +74,6 @@ def classify_impl(source, dest):
         # TODO: put original files in new directory corresponding to class
     click.echo("Run Model")
     results = run.run_model(source)
-	
-	
-    #failed_source = 'FAILED_OCR_DIR'
-    #personal_dir = dest + '/PERSONAL'
-    #nonpersonal_dir = dest + '/NON_PERSONAL'
-    #sensitive_dir = dest + '/SENSITIVE_PERSONAL'
-    #ensure_directory(nonpersonal_dir)
-    #ensure_directory(personal_dir)
-    #ensure_directory(sensitive_dir)
-
-
-    #metadata_personal = open(personal_dir + '/metadata.json', 'a+')
-    #metadata_sensitive = open(sensitive_dir + '/metadata.json', 'a+')
-    #metadata_nonpersonal = open(nonpersonal_dir + '/metadata.json', 'a+')
-    #lines_personal_file = open(personal_dir + '/lines_file.json', 'a+')
-    #lines_sensitive_file = open(sensitive_dir + '/lines_file.json', 'a+')
-    #lines_nonpersonal_file = open(nonpersonal_dir + '/lines_file.json', 'a+')
-
-    #if os.path.isdir(failed_source):
-    #    if os.path.isdir(dest + '/' + failed_source):
-    #        shutil.rmtree(dest + '/' + failed_source)
-    #    shutil.move(failed_source, dest)
-	
-	
-	
     
     all_paths = []
     path_nonpersonal = []
@@ -117,7 +92,7 @@ def classify_impl(source, dest):
         shutil.rmtree("cache")
         os.makedirs("cache")
     
-    for path, category, individual_categories, predicted_lines, confidence in results:
+    for path, category, individual_categories, predicted_lines, confidence, plain_text in results:
         resetting_nonpersonal_count = 0
         resetting_personal_count = 0
         resetting_sensitive_count = 0
@@ -134,6 +109,7 @@ def classify_impl(source, dest):
         base_file_name = os.path.basename(filename)
 
         info_file = open('cache/'+base_file_name+'_info.json', 'a+')
+        plain_text_file = open('cache/'+base_file_name+'_plain_text.json', 'a+')
         info_file_csv = open('cache/'+base_file_name+'_info.csv', 'a+')
         info_file_cat_csv = open('cache/'+base_file_name+'_cat_info.csv', 'a+')
         info_file_cat_csv.write("Categorys;\n")
@@ -148,8 +124,6 @@ def classify_impl(source, dest):
         
         certainty = float(round(confidence,3))*100
         certainty = "%.2f" % certainty
-        
-        #info_file.write("certainty: "+ certainty+"%" +"\n")
 		
         #path to directory / if for making sure it doesn't replace something with the same name
         where_slash = filename.rfind("/")
@@ -157,14 +131,7 @@ def classify_impl(source, dest):
             directoy_path = dest+"/"+filename.replace(base_file_name,"")
         else:
             directoy_path = dest+"/"+filename[:where_slash+1]
-            
-        
-        #print("filename: "+ filename)
-        #print("rfind /: "+ str(filename.rfind("/")))
-        #print(directoy_path)
-        
-        #  import ipdb
-        #  ipdb.set_trace()
+
         if category[0] == 0:
             #info_file.write("Category: non_personal \n")
             info_file_csv.write("non_personal;"+certainty+"%"+";\n")
@@ -172,7 +139,9 @@ def classify_impl(source, dest):
             append_to_metadata_file(
                 info_file,
                 individual_categories,
-                predicted_lines
+                predicted_lines,
+                plain_text_file,
+                plain_text
             )
             nonpersonal_count += 1
             resetting_nonpersonal_count += 1
@@ -183,7 +152,9 @@ def classify_impl(source, dest):
             append_to_metadata_file(
                 info_file,
                 individual_categories,
-                predicted_lines
+                predicted_lines,
+                plain_text_file,
+                plain_text
             )
             personal_count += 1
             resetting_personal_count += 1
@@ -194,7 +165,9 @@ def classify_impl(source, dest):
             append_to_metadata_file(
                 info_file,
                 individual_categories,
-                predicted_lines
+                predicted_lines,
+                plain_text_file,
+                plain_text
             )
             sensitive_count += 1
             resetting_sensitive_count += 1
@@ -220,13 +193,6 @@ def classify_impl(source, dest):
             path_amount_files.append(1)
             #print("new path: " +str(directoy_path)+"   path_nonpersonal: "+str(path_nonpersonal[all_paths.index(directoy_path)])+"   path_personal"+str(path_personal[all_paths.index(directoy_path)])+"   path_sensitive"+str(path_sensitive[all_paths.index(directoy_path)])+"   path_failed"+str(path_failed[all_paths.index(directoy_path)])+"   path_confidence"+str(path_confidence[all_paths.index(directoy_path)]))
 
-        #  import ipdb; ipdb.set_trace()
-        #  print("Output File", output_file)
-        
-        #print("base_file_name: "+ base_file_name)
-        #print("dest: "+ dest)
-        #print("directoy_path: "+ directoy_path)
-        #print("output_file: "+ output_file)
 
         if not os.path.exists(os.path.dirname(output_file)):
             os.makedirs(os.path.dirname(output_file))
@@ -240,18 +206,12 @@ def classify_impl(source, dest):
         shutil.move('cache/'+base_file_name+'_info.csv', output_file_info_csv)
         output_file_cat_info_csv = os.path.join(dest, filename_info+'_cat_info.csv')
         shutil.move('cache/'+base_file_name+'_cat_info.csv', output_file_cat_info_csv)
+        output_file_plain_text = os.path.join(dest, filename_info+'_plain_text.json')
+        shutil.move('cache/'+base_file_name+'_plain_text.json', output_file_plain_text)
     total_count = nonpersonal_count + personal_count + sensitive_count
     if total_count == 0:
         total_count = 1
     
-    
-    #metadata_personal.close()
-    #metadata_sensitive.close()
-    #metadata_nonpersonal.close()
-    #lines_personal_file.close()
-    #lines_sensitive_file.close()
-    #lines_nonpersonal_file.close()
-    #print("failed files list: "+str(list_failed_filedir))
 	
     #handeling failed files
     for f in list_failed_filedir:
@@ -273,11 +233,7 @@ def classify_impl(source, dest):
         info_file_cat_csv.close()
         
         directoy_path = output_file.replace(filename,"")
-        #print("directoy_path"+directoy_path)
-        #print("-----------------------------------------------------------------------------------------------------------")
-        #print("directoy_path"+directoy_path)
-        #print("-----------------------------------------------------------------------------------------------------------")
-    
+        
 		
         if directoy_path in all_paths:
             path_failed[all_paths.index(directoy_path)] = path_failed[all_paths.index(directoy_path)] + 1
@@ -296,9 +252,6 @@ def classify_impl(source, dest):
     shutil.rmtree("cache")
     #find all folders with only folders in order to add folder overview
     all_directories = [x[0] for x in os.walk(dest)]
-    #print("-----------------------------------------------------------------------------------------------------------")
-    #print("all_directories"+str(all_directories))
-    #print("-----------------------------------------------------------------------------------------------------------")
     for f in all_directories:
         f = f+"/"
         if f in all_paths:
@@ -339,7 +292,6 @@ def classify_impl(source, dest):
         index_in_new = all_paths.index(f)
         index_in_old = all_paths_copy.index(f)
         if index_in_new == index_in_old:
-            #print("nichts: "+ f+"  index old:"+str(index_in_old)+"  index new:"+str(index_in_new))
             path_confidence_temp[index_in_new] = path_confidence[index_in_old]
             path_nonpersonal_temp[index_in_new] = path_nonpersonal[index_in_old]
             path_personal_temp[index_in_new] = path_personal[index_in_old]
@@ -347,7 +299,7 @@ def classify_impl(source, dest):
             path_failed_temp[index_in_new] = path_failed[index_in_old]
             path_amount_files_temp[index_in_new] = path_amount_files[index_in_old]
         else:
-            #print("veränderung: "+ f+"  index old:"+str(index_in_old)+"  index new:"+str(index_in_new))
+            #print("changed: "+ f+"  index old:"+str(index_in_old)+"  index new:"+str(index_in_new))
             path_confidence_temp[index_in_new] = path_confidence[index_in_old]
             path_nonpersonal_temp[index_in_new] = path_nonpersonal[index_in_old]
             path_personal_temp[index_in_new] = path_personal[index_in_old]
@@ -370,17 +322,12 @@ def classify_impl(source, dest):
         for f in all_paths:
             string2 = f.replace(dest,"")
             if string in f:
-                #print("string in f:"+ string)
                 if string.replace(string2,"") == "":
                     pass
                 else:
-                    #print("nicht der selbe:"+ string)
                     if (string2.find(string) == 0):
                         #print(dest+string +"ist überordner von"+string2)
                         #print("\n   "+dest+string+"     "+str(path_amount_files[all_paths.index(dest+string)]))
-                        
-                        
-                        
                         here_confidence = path_confidence[all_paths.index(dest+string)]*(path_amount_files[all_paths.index(dest+string)]-path_failed[all_paths.index(dest+string)])
                         there_confidence = path_confidence[all_paths.index(f)]*(path_amount_files[all_paths.index(f)]-path_failed[all_paths.index(f)])
                         here_there_confidence = here_confidence + there_confidence
@@ -388,7 +335,6 @@ def classify_impl(source, dest):
                         try:
                             new_confidence = here_there_confidence/ amount_of_files_total
                         except ZeroDivisionError:
-                            #print("")
                             new_confidence = 0
 
                         path_confidence[all_paths.index(dest+string)] = new_confidence
@@ -497,11 +443,7 @@ def ensure_directory(directory):
         os.makedirs(directory)
 
 
-def append_to_metadata_file(metadata_file, individual_categories, predicted_lines):
-    #data = {'high_probability_categories': categories}
-    #json.dump(data, metadata_file, sort_keys=True, indent=2)
-    #metadata_file.write('\n')
-    
+def append_to_metadata_file(metadata_file, individual_categories, predicted_lines, plain_text_file, plain_text):    
     metadata_file.write("Category:\n")
     if len(individual_categories) == 0:
         metadata_file.write('-')
@@ -514,6 +456,10 @@ def append_to_metadata_file(metadata_file, individual_categories, predicted_line
     else:
         for f in predicted_lines:
             metadata_file.write('   "'+f+'"\n')
+    
+    for f in plain_text:
+            plain_text_file.write(f)
+
     
     
 
